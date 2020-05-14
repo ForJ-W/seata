@@ -22,6 +22,7 @@ import com.ecwid.consul.v1.agent.model.NewService;
 import com.ecwid.consul.v1.health.HealthServicesRequest;
 import com.ecwid.consul.v1.health.model.HealthService;
 import io.seata.common.thread.NamedThreadFactory;
+import io.seata.common.util.CollectionUtils;
 import io.seata.common.util.NetUtil;
 import io.seata.config.Configuration;
 import io.seata.config.ConfigurationFactory;
@@ -146,8 +147,10 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
             return null;
         }
 
-        // 同时判断listenerMap与clusterAddressMap中是否存在该节点
-        if (!listenerMap.containsKey(cluster) || !clusterAddressMap.containsKey(cluster)) {
+        // 同时判断listenerMap与clusterAddressMap中是否存在该节点,节点信息是否为空
+        if (!listenerMap.containsKey(cluster)
+                || !clusterAddressMap.containsKey(cluster)
+                || CollectionUtils.isEmpty(clusterAddressMap.get(cluster))) {
             //1.refresh cluster
             refreshCluster(cluster);
             //2. subscribe
