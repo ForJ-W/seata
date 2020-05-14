@@ -36,6 +36,8 @@ import java.util.Set;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
+import static io.seata.common.Constants.RETRY_REFRESH;
+
 /**
  * @author xingfudeshi@gmail.com
  */
@@ -142,20 +144,33 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
 
     @Override
     public List<InetSocketAddress> lookup(String key) throws Exception {
+
+        boolean refreshFlag = false;
+        if (key.startsWith(RETRY_REFRESH)) {
+
+            key = key.substring(RETRY_REFRESH.length());
+            refreshFlag = true;
+        }
+
         final String cluster = getServiceGroup(key);
         if (null == cluster) {
+
             return null;
         }
 
-        // 同时判断listenerMap与clusterAddressMap中是否存在该节点,节点信息是否为空
-        if (!listenerMap.containsKey(cluster)
+        // 判断listenerMap与clusterAddressMap中是否存在该节点,节点信息是否为空,是否需要重试刷新
+        refreshFlag = !listenerMap.containsKey(cluster)
                 || !clusterAddressMap.containsKey(cluster)
-                || CollectionUtils.isEmpty(clusterAddressMap.get(cluster))) {
+                || CollectionUtils.isEmpty(clusterAddressMap.get(cluster))
+                || refreshFlag;
+
+        if (refreshFlag) {
             //1.refresh cluster
             refreshCluster(cluster);
             //2. subscribe
             subscribe(cluster, services -> refreshCluster(cluster, services));
         }
+
         return clusterAddressMap.get(cluster);
     }
 

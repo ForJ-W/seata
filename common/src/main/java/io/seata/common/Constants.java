@@ -23,6 +23,12 @@ import java.nio.charset.Charset;
  * @author slievrly
  */
 public class Constants {
+
+    /**
+     * The constant RETRY_REFRESH.
+     */
+    public static final String RETRY_REFRESH  = "retryRefresh";
+
     /**
      * The constant IP_PORT_SPLIT_CHAR.
      */
