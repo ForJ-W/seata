@@ -32,12 +32,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 /**
@@ -90,8 +85,8 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
         listenerMap = new ConcurrentHashMap<>(MAP_INITIAL_CAPACITY);
         notifiers = new ConcurrentHashMap<>(MAP_INITIAL_CAPACITY);
         notifierExecutor = new ThreadPoolExecutor(THREAD_POOL_NUM, THREAD_POOL_NUM,
-            Integer.MAX_VALUE, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(),
-            new NamedThreadFactory("services-consul-notifier", THREAD_POOL_NUM));
+                Integer.MAX_VALUE, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(),
+                new NamedThreadFactory("services-consul-notifier", THREAD_POOL_NUM));
     }
 
     /**
@@ -150,7 +145,9 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
         if (null == cluster) {
             return null;
         }
-        if (!listenerMap.containsKey(cluster)) {
+
+        // 同时判断listenerMap与clusterAddressMap中是否存在该节点
+        if (!listenerMap.containsKey(cluster) || !clusterAddressMap.containsKey(cluster)) {
             //1.refresh cluster
             refreshCluster(cluster);
             //2. subscribe
@@ -237,10 +234,10 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
 
         // HealthServicesRequest com.ecwid.consul 版本问题
         return getConsulClient().getHealthServices(service, HealthServicesRequest.newBuilder()
-            .setTag(SERVICE_TAG)
-            .setQueryParams(new QueryParams(watchTimeout, index))
-            .setPassing(true)
-            .build());
+                .setTag(SERVICE_TAG)
+                .setQueryParams(new QueryParams(watchTimeout, index))
+                .setPassing(true)
+                .build());
     }
 
     /**
@@ -266,13 +263,14 @@ public class ConsulRegistryServiceImpl implements RegistryService<ConsulListener
      * @param services
      */
     private void refreshCluster(String cluster, List<HealthService> services) {
-        if (null == cluster || services == null) {
+
+        if (null == cluster) {
             return;
         }
         clusterAddressMap.put(cluster, services.stream()
-            .map(HealthService::getService)
-            .map(service -> new InetSocketAddress(service.getAddress(), service.getPort()))
-            .collect(Collectors.toList()));
+                .map(HealthService::getService)
+                .map(service -> new InetSocketAddress(service.getAddress(), service.getPort()))
+                .collect(Collectors.toList()));
     }
 
     /**
